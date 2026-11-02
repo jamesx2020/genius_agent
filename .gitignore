@@ -7,3 +7,4 @@ data/
 .DS_Store
 doc
 frontend/node_modules/
+.idea
