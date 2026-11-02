@@ -1,0 +1,22 @@
+import React,{useRef,useState} from 'react';
+const modes={split:'分批交货',expedite:'供应商加急',transfer:'其他来源调货'};
+export default function ProcurementReply({instruction,records,busy,onSubmit}){
+ const order=records.find(r=>r.id==='PO001')?.data||{};
+ const mode=instruction?.direction==='transfer'?'transfer':instruction?.direction==='expedite'?'expedite':'split';
+ const [values,setValues]=useState({supplier:'',quantity:String(instruction?.required_quantity||''),available_date:'',unit_price:'',additional:'',valid_until:'',terms:'',note:''}),[error,setError]=useState(''),[sending,setSending]=useState(false);
+ const form=useRef(null);
+ const change=(key,value)=>{setValues(v=>({...v,[key]:value}));setError('')};
+ async function submit(e){e.preventDefault();if(sending||busy)return;
+  const fields=[['supplier','请填写供应商。'],['quantity','请填写供应商确认的数量。'],['available_date','请填写供应商承诺到货的日期。'],['unit_price','请填写供应商确认的单价。'],['additional','请填写额外费用，没有则填0。'],['valid_until','请填写报价有效期。']];
+  for(const [name,message] of fields){if(!values[name].trim()){setError(message);form.current.querySelector(`[name="${name}"]`)?.focus();return}}
+  if(!Number.isInteger(Number(values.quantity))||Number(values.quantity)<1||Number(values.quantity)>(order.quantity||200)){setError('数量须为订单总量以内的正整数。');return}
+  if(!Number.isFinite(Number(values.unit_price))||!Number.isFinite(Number(values.additional))||Number(values.unit_price)<0||Number(values.additional)<0){setError('价格和费用须为不小于0的数字。');return}
+  if(values.unit_price.split('.')[1]?.length>2||values.additional.split('.')[1]?.length>2){setError('金额最多填写两位小数。');return}
+  setSending(true);setError('');
+  try{const result=await onSubmit({supplier:values.supplier.trim(),material:order.material||'低压电缆 YJV 4×35',quantity:Number(values.quantity),available_date:values.available_date,unit_price_cents:Math.round(Number(values.unit_price)*100),additional_cents:Math.round(Number(values.additional)*100),valid_until:values.valid_until,fulfillment_type:mode,terms:values.terms.trim()||`供应商确认${values.quantity}米于${values.available_date}到货，新增费用为本表填写的合计金额。`,note:values.note.trim()});if(result===false)throw new Error('提交未成功，请重试。')}
+  catch(e){setError(e.message||'提交失败，请重试。')}
+  finally{setSending(false)}
+ }
+ return <section className="card current-action"><div className="action-heading"><div className="action-eyebrow">轮到你了 · 采购</div><h2>确认货源和费用</h2><p>把供应商确认的信息填在这里，系统会整理回复并继续核算。</p></div><div className="action-content"><form ref={form} onSubmit={submit} noValidate><div className="compact-grid"><Field name="supplier" label="供应商" placeholder="谁能供货" values={values} change={change} disabled={sending}/><Field name="quantity" label="确认供货数量（米）" type="number" values={values} change={change} disabled={sending}/><Field name="available_date" label="承诺到货日期" type="date" values={values} change={change} disabled={sending}/><Field name="unit_price" label="单价（元/米）" type="number" placeholder="供应商确认的单价" values={values} change={change} disabled={sending}/><Field name="additional" label="加急 / 调货及运费（元）" type="number" placeholder="除材料价款外的费用，没有填0" values={values} change={change} disabled={sending}/><Field name="valid_until" label="报价有效至" type="date" values={values} change={change} disabled={sending}/></div><details className="subtle-details"><summary>补充交付条款或其他说明（可选）</summary><div className="field"><label htmlFor="proc-terms">交付条款 / 费用构成</label><textarea id="proc-terms" name="terms" rows="2" value={values.terms} onChange={e=>change('terms',e.target.value)} placeholder="例如：调货费1500元，运费300元，合计1800元。"/></div><div className="field"><label htmlFor="proc-note">其他说明</label><textarea id="proc-note" rows="2" value={values.note} onChange={e=>change('note',e.target.value)} placeholder="只补充你已确认的事实。"/></div></details>{error&&<div className="submit-error" role="alert">{error}</div>}<div className="action-bottom"><span>材料价差自动计算，新增费用仍需审批。</span><button className="primary" type="submit" disabled={busy||sending}>{sending?'正在提交…':'提交报价，继续处理'}</button></div></form></div></section>
+}
+function Field({name,label,type='text',placeholder,values,change,disabled}){return <div className="field"><label htmlFor={'proc-'+name}>{label}</label><input id={'proc-'+name} name={name} type={type} min={type==='number'?'0':undefined} step={type==='number'?(name==='quantity'?'1':'0.01'):undefined} placeholder={placeholder} value={values[name]} onChange={e=>change(name,e.target.value)} disabled={disabled} required/></div>}

@@ -1,0 +1,15 @@
+[project]
+name = "engineering-agent"
+version = "0.1.0"
+description = "工程项目三岗位 Agent 协同系统"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1", "uvicorn>=0.34,<1", "pydantic-settings>=2.7,<3",
+  "sqlalchemy>=2.0,<3", "alembic>=1.14,<2", "deepagents>=0.4,<1",
+  "langchain-openai>=0.3,<2", "langgraph>=1,<2", "langgraph-checkpoint-sqlite>=2,<4",
+  "python-multipart>=0.0.20", "pypdf>=5,<7", "openpyxl>=3.1,<4"
+]
+[dependency-groups]
+dev = ["pytest>=8,<10", "httpx>=0.28,<1"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
